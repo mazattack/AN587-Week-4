@@ -7,20 +7,47 @@ output: html_document
 ```{r}
 library(curl)
 library(dplyr)
+library(ggplot2)
+library(reshape2)
 f <- f <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN597_Fall17/zombies.csv")
 d <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = FALSE)
 head(d)
 d<-tbl_df(d)
 ```
 **[1] Calculate the population mean and standard deviation for each quantitative random variable (height, weight, age, number of zombies killed, and years of education). NOTE: You will not want to use the built in var() and sd() commands as these are for samples.**
-```{r}
-summarize_at(d$height:zombies_killed, funs(mean, sd))
+```{r population SD}
+#Here I am setting up the functions for the population standard deviation
+pop_v <- function(x) {
+    sum((x - mean(x))^2)/(length(x))
+}
+pop_sd <- function(x) {
+    sqrt(pop_v(x))
+}
+
+summarize_all(select(d, height:zombies_killed, years_of_education, age), funs(mean, pop_sd))
 ```
 
+**[2] Use {ggplot} and make boxplots of each of these variables by gender.**
 
-[2] Use {ggplot} and make boxplots of each of these variables by gender.
+```{r prep data for graph}
+#convert gender to factor
+d$gender<-as.factor(d$gender)
+#to put multiple columns on one bar graph, melt the data and remove NAs (reshape2 package)
+var.m<- melt(data=(select(d, height:zombies_killed, years_of_education, age, gender)), na.rm=TRUE)
+var.m
+```
+```{r create boxplot}
+p<-ggplot(data=var.m, aes(x=gender, y=(value)))
+p+geom_boxplot()+facet_wrap(~variable, scales="free")
+```
 
-[3] Use {ggplot} and make scatterplots of height and weight in relation to age. Do these variables seem to be related? In what way?
+**[3] Use {ggplot} and make scatterplots of height and weight in relation to age. Do these variables seem to be related? In what way?**
+```{r}
+scat<-ggplot(data=d, aes(y=age, x=height))
+scat2<-ggplot(data=d, aes(y=age, x=weight))
+scat+geom_point()
+```
+
 
 [4] Using histograms and Q-Q plots, check whether the quantitative variables seem to be drawn from a normal distribution. Which seem to be and which do not (hint: not all are drawn from the normal distribution)? For those that are not, can you determine what common distribution they are drawn from?
 
