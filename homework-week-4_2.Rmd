@@ -43,13 +43,39 @@ p+geom_boxplot()+facet_wrap(~variable, scales="free")
 
 **[3] Use {ggplot} and make scatterplots of height and weight in relation to age. Do these variables seem to be related? In what way?**
 ```{r}
-scat<-ggplot(data=d, aes(y=age, x=height))
-scat2<-ggplot(data=d, aes(y=age, x=weight))
-scat+geom_point()
+scat<-ggplot(data=d, aes(x=age, y=height))+geom_point()+geom_smooth(method=lm)+labs(title="height vs age")
+scat2<-ggplot(data=d, aes(x=age, y=weight))+geom_point()+geom_smooth(method=lm)+labs(title="weight vs age")
+scat
+scat2
 ```
-
+Height and age are positively correlated: as age increases, so does weight. While weight and age is also somewhat positively correlated, there is a large amount of variation visible in the scatterplot and it is clear that other variables influence weight in this sample. 
 
 [4] Using histograms and Q-Q plots, check whether the quantitative variables seem to be drawn from a normal distribution. Which seem to be and which do not (hint: not all are drawn from the normal distribution)? For those that are not, can you determine what common distribution they are drawn from?
+```{r histograms}
+hisQ<-ggplot(data=var.m, aes(x=(value)))
+hisQ+geom_histogram()+facet_wrap(~variable, scales="free")
+```
+```{r qqplots}
+
+hisQ<-ggplot(data=var.m, aes(sample=(value)))
+hisQ+geom_qq()+facet_wrap(~variable, scales="free") #Couldn't find a good way to add qqline to ggplot
+```
+
+```{r}
+data(var.m.g)
+#found code at https://stackoverflow.com/questions/20781663/qqnorm-plotting-for-multiple-subsets
+op <- par(mfrow=c(2,3))
+for(i in levels(var.m.g$variable)){
+  tmp <- with(var.m.g, value[variable==i])
+  qqnorm(tmp,xlab="Theoretical",main=i)
+  qqline(tmp)
+}
+par(op)
+rm(i,tmp)
+
+
+```
+
 
 [5] Now use the sample() function to sample ONE subset of 30 zombie survivors (without replacement) from this population and calculate the mean and sample standard deviation for each variable. Also estimate the standard error for each variable and construct the 95% confidence interval for each mean. Note that for the variables that are not drawn from the normal distribution, you will need to base your estimate of the CIs on some different distribution.
 
