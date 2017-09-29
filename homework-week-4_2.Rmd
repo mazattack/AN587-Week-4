@@ -34,7 +34,7 @@ summarize_all(select(d, height:zombies_killed, years_of_education, age), funs(me
 d$gender<-as.factor(d$gender)
 #to put multiple columns on one bar graph, melt the data and remove NAs (reshape2 package)
 var.m<- melt(data=(select(d, height:zombies_killed, years_of_education, age, gender)), na.rm=TRUE)
-var.m
+head(var.m)
 ```
 ```{r create boxplot}
 p<-ggplot(data=var.m, aes(x=gender, y=(value)))
@@ -55,26 +55,21 @@ Height and age are positively correlated: as age increases, so does weight. Whil
 hisQ<-ggplot(data=var.m, aes(x=(value)))
 hisQ+geom_histogram()+facet_wrap(~variable, scales="free")
 ```
-```{r qqplots}
-
-hisQ<-ggplot(data=var.m, aes(sample=(value)))
-hisQ+geom_qq()+facet_wrap(~variable, scales="free") #Couldn't find a good way to add qqline to ggplot
-```
 
 ```{r}
+var.m.g<-group_by(var.m, variable)
 data(var.m.g)
 #found code at https://stackoverflow.com/questions/20781663/qqnorm-plotting-for-multiple-subsets
-op <- par(mfrow=c(2,3))
 for(i in levels(var.m.g$variable)){
   tmp <- with(var.m.g, value[variable==i])
   qqnorm(tmp,xlab="Theoretical",main=i)
   qqline(tmp)
 }
-par(op)
 rm(i,tmp)
-
+#Here I decided not to use par to line them up neatly as they were too small to clearly see the trends
 
 ```
+Height and weight both appear to follow a normal distribution as the shape of the histograms and the qq plots fit nicely with what we would expect to see with a normal distribution, particularly that the majority of the points fall on the qqline shown in the qqplot. Age also appears to match this distribution, which is unusual as age is not usually normally distributed in society. However given that age was calculated as continuous data and the distribution of this sample was impacted by a zombie apocalypse, I will treat age as normally distributed. Years of education and number of zombies killed are count data and therefore likely to be poisson distributions. 
 
 
 [5] Now use the sample() function to sample ONE subset of 30 zombie survivors (without replacement) from this population and calculate the mean and sample standard deviation for each variable. Also estimate the standard error for each variable and construct the 95% confidence interval for each mean. Note that for the variables that are not drawn from the normal distribution, you will need to base your estimate of the CIs on some different distribution.
