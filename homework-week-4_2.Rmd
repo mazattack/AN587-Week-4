@@ -1,4 +1,3 @@
----
 title: "Homework-week-4_2"
 author: "Maria C. Codlin"
 date: "September 27, 2017"
@@ -9,6 +8,9 @@ library(curl)
 library(dplyr)
 library(ggplot2)
 library(reshape2)
+library(manipulate)
+library(qwraps2)
+options(qwraps2_markup="markdown")
 f <- f <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN597_Fall17/zombies.csv")
 d <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = FALSE)
 head(d)
@@ -24,7 +26,8 @@ pop_sd <- function(x) {
     sqrt(pop_v(x))
 }
 
-summarize_all(select(d, height:zombies_killed, years_of_education, age), funs(mean, pop_sd))
+pop_means<-summarize_all(select(d, height:zombies_killed, years_of_education, age), funs(mean, pop_sd))
+pop_means
 ```
 
 **[2] Use {ggplot} and make boxplots of each of these variables by gender.**
@@ -50,7 +53,7 @@ scat2
 ```
 Height and age are positively correlated: as age increases, so does weight. While weight and age is also somewhat positively correlated, there is a large amount of variation visible in the scatterplot and it is clear that other variables influence weight in this sample. 
 
-[4] Using histograms and Q-Q plots, check whether the quantitative variables seem to be drawn from a normal distribution. Which seem to be and which do not (hint: not all are drawn from the normal distribution)? For those that are not, can you determine what common distribution they are drawn from?
+**[4] Using histograms and Q-Q plots, check whether the quantitative variables seem to be drawn from a normal distribution. Which seem to be and which do not (hint: not all are drawn from the normal distribution)? For those that are not, can you determine what common distribution they are drawn from?**
 ```{r histograms}
 hisQ<-ggplot(data=var.m, aes(x=(value)))
 hisQ+geom_histogram()+facet_wrap(~variable, scales="free")
@@ -69,10 +72,117 @@ rm(i,tmp)
 #Here I decided not to use par to line them up neatly as they were too small to clearly see the trends
 
 ```
-Height and weight both appear to follow a normal distribution as the shape of the histograms and the qq plots fit nicely with what we would expect to see with a normal distribution, particularly that the majority of the points fall on the qqline shown in the qqplot. Age also appears to match this distribution, which is unusual as age is not usually normally distributed in society. However given that age was calculated as continuous data and the distribution of this sample was impacted by a zombie apocalypse, I will treat age as normally distributed. Years of education and number of zombies killed are count data and therefore likely to be poisson distributions. 
+Height and weight both appear to follow a normal distribution as the shape of the histograms and the qq plots fit nicely with what we would expect to see with a normal distribution, particularly that the majority of the points fall on the qqline shown in the qqplot. Age also appears to match this distribution, although it is a little more variable towards the upper part of the line. While age is not usually a variable that is normally distributed, here, age was calculated as continuous data and the distribution of this population was impacted by a zombie apocalypse, so I think it is fair to call it normally distributed based on how well it matches in the qqplot. The years of education and number of zombies killed are count data and look like they should match a poisson distribution. 
 
 
-[5] Now use the sample() function to sample ONE subset of 30 zombie survivors (without replacement) from this population and calculate the mean and sample standard deviation for each variable. Also estimate the standard error for each variable and construct the 95% confidence interval for each mean. Note that for the variables that are not drawn from the normal distribution, you will need to base your estimate of the CIs on some different distribution.
+**[5] Now use the sample() function to sample ONE subset of 30 zombie survivors (without replacement) from this population and calculate the mean and sample standard deviation for each variable. Also estimate the standard error for each variable and construct the 95% confidence interval for each mean. Note that for the variables that are not drawn from the normal distribution, you will need to base your estimate of the CIs on some different distribution.**
 
-[6] Now draw 99 more random samples of 30 zombie survivors out and calculate the mean for each of the these samples. Together with the first sample you drew out, you now have a set of 100 means for each variable (each based on 30 observations), which constitutes a sampling distribution for each variable. What are the means and standard deviations of this distribution for each variable? How do the standard deviations compare to the standard errors estimated in [5]? What do these sampling distributions look like? Are they normally distributed? What about for those variables that you concluded were not originally drawn from a normal distribution?
+First I create a sample from the population called "s"
+```{r}
+s<-sample_n (d, size=30, replace=FALSE) #the sample function was obscured by dplyr, so I used the dplyr equiv.
+head(s)
 
+```
+
+Then I create a function for calculating the confidence interval of normally distributed data. 
+```{r confidence interval function}
+normalCI = function(x, CIlevel = 0.95) {
+    upper = round(mean(x) + qnorm(1 - (1 - CIlevel)/2) * sqrt(var(x)/length(x)), 2)
+    lower = round(mean(x) + qnorm((1 - CIlevel)/2) * sqrt(var(x)/length(x)), 2)
+    ci <- 
+    ci<-toString(c(lower,"-",upper)) #add as string to fit in function above
+    ci<-(gsub(",","",ci))
+    return(ci)
+}
+```
+
+Then I create a function to summarize the normally distributed data
+```{r sum_stat function normal distribution}
+sum_stat=function(x){
+summarize(s, "Mean"=round(mean(x, na.rm=TRUE), 2), "SD"=round(sd(x, na.rm=TRUE), 2), "SE"=round(sd(x)/sqrt(length(x)), 2), "confidence interval"=normalCI(x))
+}
+```
+
+And run this for each normally distributed variable
+```{r apply summary stats}
+Height<-sum_stat(s$height)
+Weight<-sum_stat(s$weight)
+Age<-sum_stat(s$age)
+
+Height
+Weight
+Age
+```
+Next I failed miserably to figure out how to calculate the confidence interval for poisson distributed data by hand and decide to use a built-in function poisson.test instead. 
+
+```{r sum_stat function poisson distribution}
+sum_stat_p=function(x){
+s2<-summarize(s, "Mean"=round(mean(x, na.rm=TRUE), 2), "SD"=round(sd(x, na.rm=TRUE), 2), "SE"=round(sqrt(mean(x)/length(x)), 2))
+s3<-poisson.test(sum(x), T=length(x))
+return(list(s2,s3))
+}
+```
+```{r}
+"Zombies killed"<-sum_stat_p(s$zombies_killed)
+"years of education"<-sum_stat_p(s$years_of_education)
+`Zombies killed`
+`years of education`
+```
+
+
+**[6] Now draw 99 more random samples of 30 zombie survivors out and calculate the mean for each of the these samples. Together with the first sample you drew out, you now have a set of 100 means for each variable (each based on 30 observations), which constitutes a sampling distribution for each variable.**
+
+
+```{r drawing 100 samples}
+s_100<-NULL #set up the dummy
+ for (i in 1:100) {
+    s_100[[i]]  <-sample_n (d, size=30, replace=FALSE) #the sample function was obscured by dplyr, so I used the dplyr equiv.
+ }
+```
+
+```{r calculating sample means as a list}
+m <- NULL
+for (i in 1:100) {
+    m$height[i] <- mean(s_100[[i]]$height)
+    m$weight[i] <- mean(s_100[[i]]$weight)
+    m$age[i] <- mean(s_100[[i]]$age)
+    m$zombies_killed[i] <- mean(s_100[[i]]$zombies_killed)
+    m$years_of_education[i] <- mean(s_100[[i]]$years_of_education)
+}
+```
+**What are the means and standard deviations of this distribution for each variable? **
+I used lapply to apply means and sd across the sampling distrubution of each element
+```{r}
+sapply(m, mean)
+sapply(m, sd)
+```
+**How do the standard deviations compare to the standard errors estimated in [5]? **
+Each of the standard errors estimated in [5] are an approximation of the standard deviation of the sampling distribution. Height matched the closest, being only 0.05 units different between the two statistics. 
+
+**What do these sampling distributions look like? Are they normally distributed? What about for those variables that you concluded were not originally drawn from a normal distribution?**
+
+
+
+```{r melt2}
+mm<-melt(m)
+mm$L1<-as.factor(mm$L1)
+str(mm)
+```
+```{r histograms2}
+hisQ_sample<-ggplot(data=mm, aes(x=(value)))
+hisQ_sample+geom_histogram()+facet_wrap(~L1, scales="free")
+```
+```{r}
+#found code at https://stackoverflow.com/questions/20781663/qqnorm-plotting-for-multiple-subsets
+for(i in levels(mm$L1)){
+  tmp<- with(mm, value[L1==i])
+  qqnorm(tmp,xlab="Theoretical",main=i)
+  qqline(tmp)
+}
+rm(i,tmp)
+#Here I decided not to use par to line them up neatly as they were too small to clearly see the trends
+
+```
+
+
+Height and weight no longer look as clearly normally distributed as before, as they fall below the line at both ends of the qqline and both appear skewed to the right in the histograms. Age, years of education and zombies killed appear a better fit here. I hope these interpretations don't change when I knit this!... They do... so everything seems to match a normal distribution, although there is some skew present in the data, depending on which samples are taken. 
